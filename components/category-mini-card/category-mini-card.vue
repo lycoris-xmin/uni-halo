@@ -4,7 +4,7 @@
 			:fileMd5="$utils.checkThumbnailUrl(category.spec.cover)" mode="aspectFill"></cache-image>
 		<view class="content">
 			<view class="name">{{ category.spec.displayName }}</view>
-			<text class="label">共 {{ category.postCount }} 篇</text>
+			<text class="label">共 {{ category.postCount || 0 }} 篇</text>
 		</view>
 	</view>
 </template>
