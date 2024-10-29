@@ -9,7 +9,7 @@
                 <view class="search-input_text pl-12 text-size-m text-grey">搜索内容...</view>
             </view>
             <!-- #ifdef APP-PLUS || H5 -->
-            <view slot="right" class="mr-24 text-size-m text-grey">{{ appInfo.name }}</view>
+            <view slot="right" class="mr-24 text-size-m text-grey text-overflow">{{ appInfo.name }}</view>
             <!-- #endif -->
         </tm-menubars>
         <view v-if="loading !== 'success' && articleList.length===0" class="loading-wrap">
@@ -22,33 +22,37 @@
         </view>
         <block v-else>
             <view class="bg-white pb-24">
-                <view class="banner bg-white ml-24 mr-24 mt-12 round-3" v-if="bannerList.length != 0">
+                <view class="banner bg-white ml-24 mr-24 mt-12 round-3" v-if="bannerList.length !== 0">
                     <e-swiper :dotPosition="globalAppSettings.banner.dotPosition" :autoplay="true"
                               :useDot="globalAppSettings.banner.useDot" :list="bannerList"
                               @on-click="fnOnBannerClick"></e-swiper>
                 </view>
             </view>
-            <view class="flex flex-between mt-16 mb-24 pl-24 pr-24">
-                <view class="page-item_title text-weight-b ">精品分类</view>
-                <view class="show-more flex flex-center bg-white round-3" @click="fnToCategoryPage">
-                    <text class="iconfont icon-angle-right text-size-s text-grey-darken-1"></text>
-                </view>
-                <view v-if="false" class="flex flex-center text-size-s text-grey-darken-1" @click="fnToCategoryPage">
-                    <text class=" text-size-m">查看更多</text>
-                    <text class="iconfont icon-angle-right  text-size-s "></text>
-                </view>
-            </view>
-            <scroll-view class="category" scroll-x="true">
-                <view v-if="categoryList.length == 0" class="cate-empty round-3 mr-5 flex flex-center text-grey">
-                    还没有任何分类~
-                </view>
-                <block v-else>
-                    <view class="content" v-for="(category, index) in categoryList" :key="category.metadata.name"
-                          @click="fnToCategoryBy(category)">
-                        <category-mini-card :category="category"></category-mini-card>
+            <!-- 精品分类 -->
+            <block v-if="calcIsShowCategory">
+                <view class="flex flex-between mt-16 mb-24 pl-24 pr-24">
+                    <view class="page-item_title text-weight-b ">精品分类</view>
+                    <view class="show-more flex flex-center bg-white round-3" @click="fnToCategoryPage">
+                        <text class="iconfont icon-angle-right text-size-s text-grey-darken-1"></text>
                     </view>
-                </block>
-            </scroll-view>
+                    <view v-if="false" class="flex flex-center text-size-s text-grey-darken-1"
+                          @click="fnToCategoryPage">
+                        <text class=" text-size-m">查看更多</text>
+                        <text class="iconfont icon-angle-right  text-size-s "></text>
+                    </view>
+                </view>
+                <scroll-view class="category" scroll-x="true">
+                    <view v-if="categoryList.length === 0" class="cate-empty round-3 mr-5 flex flex-center text-grey">
+                        还没有任何分类~
+                    </view>
+                    <block v-else>
+                        <view class="content" v-for="(category, index) in categoryList" :key="category.metadata.name"
+                              @click="fnToCategoryBy(category)">
+                            <category-mini-card :category="category"></category-mini-card>
+                        </view>
+                    </block>
+                </scroll-view>
+            </block>
 
             <!-- 最新文章 -->
             <view class="flex flex-between mt-24 mb-24 pl-24 pr-24">
@@ -61,7 +65,7 @@
                     <text class="iconfont icon-angle-right text-size-s "></text>
                 </view>
             </view>
-            <view v-if="articleList.length == 0" class="article-empty">
+            <view v-if="articleList.length === 0" class="article-empty">
                 <tm-empty icon="icon-shiliangzhinengduixiang-" label="博主还没有发表任何内容~"></tm-empty>
             </view>
             <block v-else>
@@ -132,12 +136,23 @@ export default {
             const appInfo = this.haloConfigs.appConfig.appInfo;
             appInfo.logo = this.$utils.checkImageUrl(appInfo.logo)
             return appInfo;
+        },
+        mockJson() {
+            return this.$tm.vx.getters().getMockJson;
+        },
+        calcIsShowCategory() {
+            if (this.haloConfigs.basicConfig.auditModeEnabled && this.categoryList.length !== 0) {
+                return false
+            }
+            if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                return false
+            }
+            return this.haloConfigs.pageConfig.homeConfig.useCategory
         }
     },
     onLoad() {
         this.fnSetPageTitle();
     },
-
     created() {
         this.fnQuery();
     },
@@ -146,8 +161,14 @@ export default {
         this.queryParams.page = 1;
         this.fnQuery();
     },
-
     onReachBottom(e) {
+        if (this.haloConfigs.basicConfig.auditModeEnabled) {
+            uni.showToast({
+                icon: 'none',
+                title: '没有更多数据了'
+            });
+            return
+        }
         if (this.result.hasNext) {
             this.queryParams.page += 1;
             this.isLoadMore = true;
@@ -161,15 +182,32 @@ export default {
     },
     methods: {
         fnQuery() {
+            console.log('this.mockJson', this.mockJson)
             this.fnGetBanner();
             this.fnGetArticleList();
             this.fnGetCategoryList();
         },
-
         fnGetCategoryList() {
             if (this.haloConfigs.basicConfig.auditModeEnabled) {
-              return;
+                this.categoryList = this.mockJson.home.categoryList.map((item) => {
+                    return {
+                        metadata: {
+                            name: Date.now() * Math.random(),
+                        },
+                        spec: {
+                            displayName: item.title,
+                            cover: item.cover
+                        },
+                        postCount: 0
+                    }
+                });
+                return;
             }
+
+            if (!this.calcIsShowCategory) {
+                return;
+            }
+
             this.$httpApi.v2
                 .getCategoryList({})
                 .then(res => {
@@ -195,7 +233,20 @@ export default {
         // 获取轮播图
         fnGetBanner() {
             if (this.haloConfigs.basicConfig.auditModeEnabled) {
-              return;
+                this.bannerList = this.mockJson.home.bannerList.map((item) => {
+                    return {
+                        mp4: '',
+                        id: Date.now() * Math.random(),
+                        nickname: this.haloConfigs.authorConfig.blogger.nickname,
+                        avatar: this.$utils.checkAvatarUrl(this.haloConfigs.authorConfig.blogger.avatar),
+                        address: '',
+                        createTime: item.time,
+                        title: item.title,
+                        src: this.$utils.checkThumbnailUrl(item.cover),
+                        image: this.$utils.checkThumbnailUrl(item.cover)
+                    }
+                });
+                return;
             }
             const _this = this;
             const _format = function (list) {
@@ -236,7 +287,10 @@ export default {
             this.bannerCurrent = e.current;
         },
         fnOnBannerClick(item) {
-            if (item.id == '') return;
+            if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                return;
+            }
+            if (item.id === '') return;
             this.fnToArticleDetail({
                 metadata: {
                     name: item.id
@@ -246,6 +300,29 @@ export default {
         // 文章列表
         fnGetArticleList() {
             if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                this.articleList = this.mockJson.home.postList.map((item) => {
+                    return {
+                        metadata: {
+                            name: Date.now() * Math.random(),
+                        },
+                        spec: {
+                            pinned: false,
+                            cover: item.cover,
+                            title: item.title,
+                            publishTime: item.time
+                        },
+                        status: {
+                            excerpt: item.desc
+                        },
+                        stats: {
+                            visit: 0
+                        }
+                    }
+                });
+                this.loading = 'success';
+                this.loadMoreText = '呜呜，没有更多数据啦~';
+                uni.hideLoading();
+                uni.stopPullDownRefresh();
                 return;
             }
             // 设置状态为加载中
@@ -285,9 +362,11 @@ export default {
                 }
             })
         },
-
         //跳转文章详情
         fnToArticleDetail(article) {
+            if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                return;
+            }
             uni.navigateTo({
                 url: '/pagesA/article-detail/article-detail?name=' + article.metadata.name,
                 animationType: 'slide-in-right'
@@ -323,6 +402,9 @@ export default {
 
         // 根据slug查询分类下的文章
         fnToCategoryBy(category) {
+            if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                return;
+            }
             uni.navigateTo({
                 url: `/pagesA/category-detail/category-detail?name=${category.metadata.name}&title=${category.spec.displayName}`
             });

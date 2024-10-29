@@ -7,7 +7,7 @@
                     <image class="avatar" :src="$utils.checkAvatarUrl(loveConfig.loveInfo.boyAvatar)" mode="aspectFit"></image>
                     <view class="name">{{ loveConfig.loveInfo.boyNickname }}</view>
                 </view>
-                <image class="like" :src="$utils.checkImageUrl(loveConfig.loveImageUrl)" mode="scaleToFill"></image>
+                <image class="like" :src="$utils.checkImageUrl(loveConfig.pageImages.heartImageUrl)" mode="scaleToFill"></image>
                 <view class="girl">
                     <image class="avatar" :src="$utils.checkAvatarUrl(loveConfig.loveInfo.girlAvatar)" mode="aspectFit"></image>
                     <view class="name">{{ loveConfig.loveInfo.girlNickname }}</view>
@@ -43,7 +43,7 @@
             <block v-for="(nav, index) in navList" :key="index">
                 <view v-if="nav.use" class="list-item" @click="fnToPage(nav.key)">
                     <view class="left">
-                        <image class="icon" :src="nav.iconImageUrl" mode="aspectFit"></image>
+                        <image class="icon" :src="$utils.checkImageUrl(nav.iconImageUrl)" mode="aspectFit"></image>
                     </view>
                     <view class="right">
                         <view class="name">{{ nav.title }}</view>
@@ -100,21 +100,21 @@ export default {
                 {
                     key: 'journey',
                     use: configs.ourStory.enabled,
-                    iconImageUrl: 'https://b.925i.cn/uni_halo_love/diandian.png',
+                    iconImageUrl: configs.ourStory.iconUrl,
                     title: '关于我们',
                     desc: '我们一起度过的那些经历'
                 },
                 {
                     key: 'album',
                     use: configs.lovePhoto.enabled,
-                    iconImageUrl: 'https://b.925i.cn/uni_halo_love/diandian.png',
+                    iconImageUrl: configs.lovePhoto.iconUrl,
                     title: '恋爱相册',
                     desc: '定格了我们的那些小美好'
                 },
                 {
                     key: 'list',
                     use: configs.loveDaily.enabled,
-                    iconImageUrl: 'https://b.925i.cn/uni_halo_love/diandian.png',
+                    iconImageUrl: configs.loveDaily.iconUrl,
                     title: '恋爱清单',
                     desc: '你我之间的约定我们都在努力实现'
                 },

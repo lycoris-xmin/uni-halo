@@ -1,13 +1,13 @@
 <template>
     <view class="app-page">
-        <view v-if="loading != 'success'" class="loading-wrap">
+        <view v-if="loading !== 'success'" class="loading-wrap">
             <tm-skeleton model="listAvatr"></tm-skeleton>
             <tm-skeleton model="listAvatr"></tm-skeleton>
             <tm-skeleton model="listAvatr"></tm-skeleton>
         </view>
         <!-- 内容区域 -->
         <view v-else class="app-page-content">
-            <view v-if="dataList.length == 0" class="content-empty flex flex-center" style="min-height: 70vh;">
+            <view v-if="dataList.length === 0" class="content-empty flex flex-center" style="min-height: 70vh;">
                 <!-- 空布局 -->
                 <tm-empty icon="icon-shiliangzhinengduixiang-" label="暂无数据"></tm-empty>
             </view>
@@ -37,13 +37,21 @@
                                          :content="moment.spec.content.html" :markdown="true" :showLineNumber="true"
                                          :showLanguageName="true" :copyByLongPress="true"/>
                             </view>
-                            <view v-if="moment.spec.content.medium.length!==0" class="images"
-                                  :class="['images-'+moment.spec.content.medium.length]">
-                                <view class="image-item" v-for="(image,mediumIndex) in moment.spec.content.medium"
+                            <view class="mb-12 mt--12" v-if="moment.videos.length!==0"
+                                  style="display: flex; flex-direction: column; gap: 12rpx 0;padding: 0 24rpx; ">
+                                <video
+                                    style="width:100%;height: 400rpx;border-radius: 12rpx;"
+                                    v-for="(video,index) in moment.videos"
+                                    :key="index" :src="video.url"></video>
+                            </view>
+                            <view v-if="moment.images.length!==0" class="images"
+                                  :class="['images-'+moment.images.length]">
+                                <view class="image-item"
+                                      v-for="(image,mediumIndex) in moment.images"
                                       :key="mediumIndex">
                                     <image mode="aspectFill" style="width: 100%;height: 100%;border-radius: 6rpx;"
                                            :src="image.url"
-                                           @click="handlePreview(mediumIndex,moment.spec.content.medium)"/>
+                                           @click="handlePreview(mediumIndex,moment.images)"/>
                                 </view>
                             </view>
                         </view>
@@ -93,6 +101,12 @@ export default {
             let blogger = this.$tm.vx.getters().getConfigs.authorConfig.blogger;
             blogger.avatar = this.$utils.checkAvatarUrl(blogger.avatar, true);
             return blogger;
+        },
+        haloConfigs() {
+            return this.$tm.vx.getters().getConfigs;
+        },
+        mockJson() {
+            return this.$tm.vx.getters().getMockJson;
         }
     },
 
@@ -106,6 +120,13 @@ export default {
     },
 
     onReachBottom(e) {
+        if (this.haloConfigs.basicConfig.auditModeEnabled) {
+            uni.showToast({
+                icon: 'none',
+                title: '没有更多数据了'
+            });
+            return
+        }
         if (this.hasNext) {
             this.queryParams.page += 1;
             this.isLoadMore = true;
@@ -119,6 +140,37 @@ export default {
     },
     methods: {
         fnGetData() {
+            if (this.haloConfigs.basicConfig.auditModeEnabled) {
+                this.dataList = this.mockJson.moments.list.map((item) => {
+                    return {
+                        metadata: {
+                            name: Date.now() * Math.random(),
+                        },
+                        spec: {
+                            user: {
+                                displayName: this.bloggerInfo.nickname,
+                                avatar: this.$utils.checkAvatarUrl(this.bloggerInfo.avatar),
+                            },
+                            content: {
+                                html: item.content
+                            },
+                            releaseTime: item.time
+                        },
+                        images: item.images.map((img) => {
+                            return {
+                                type: "PHOTO",
+                                url: this.$utils.checkThumbnailUrl(img),
+                            }
+                        }),
+                        videos: []
+                    }
+                });
+                this.loading = 'success';
+                this.loadMoreText = '呜呜，没有更多数据啦~';
+                uni.hideLoading();
+                uni.stopPullDownRefresh();
+                return;
+            }
             uni.showLoading({
                 mask: true,
                 title: '加载中...'
@@ -131,9 +183,6 @@ export default {
             this.$httpApi.v2
                 .getMomentList(this.queryParams)
                 .then(res => {
-                    console.log('请求结果：');
-                    console.log(res);
-
                     this.loading = 'success';
                     this.loadMoreText = res.hasNext ? '上拉加载更多' : '呜呜，没有更多数据啦~';
                     this.hasNext = res.hasNext;
@@ -143,11 +192,15 @@ export default {
                             displayName: this.bloggerInfo.nickname,
                             avatar: this.$utils.checkAvatarUrl(this.bloggerInfo.avatar)
                         }
-                        item.spec.content.medium
+                        item.spec.content.medium.map(medium => {
+                            medium.url = this.$utils.checkThumbnailUrl(medium.url, true)
+                        })
+
+                        item['images'] = item.spec.content.medium
                             .filter(x => x.type === 'PHOTO')
-                            .map(medium => {
-                                medium.url = this.$utils.checkThumbnailUrl(medium.url, true)
-                            })
+
+                        item['videos'] = item.spec.content.medium
+                            .filter(x => x.type === 'VIDEO')
                         return item;
                     })
 

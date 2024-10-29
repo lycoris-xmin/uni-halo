@@ -12,30 +12,37 @@ export default {
             return this.$tm.vx.getters().getConfigs;
         }
     },
-  onLoad: function (options) {
-    uni.$tm.vx.actions('config/fetchConfigs').then(async (res) => {
-      if (options.scene) {
-        if ('' !== options.scene) {
-          const postId = await this.getPostIdByQRCode(options.scene);
-          if (postId) {
-            uni.redirectTo({
-              url: articleDetailPath + `?name=${postId}`,
-              animationType: 'slide-in-right'
-            });
-          }
-        }
-      }
+    onLoad: function (options) {
+        uni.$tm.vx.actions('config/fetchConfigs').then(async (res) => {
+            if (options.scene) {
+                if ('' !== options.scene) {
+                    const postId = await this.getPostIdByQRCode(options.scene);
+                    if (postId) {
+                        uni.redirectTo({
+                            url: articleDetailPath + `?name=${postId}`,
+                            animationType: 'slide-in-right'
+                        });
+                    }
+                }
+            }
 
-      // #ifdef MP-WEIXIN
-      // uni.$tm.vx.commit('setWxShare', res.shareConfig);
-      // #endif
-      this.fnCheckShowStarted();
-    }).catch((err) => {
-      uni.switchTab({
-        url: homePagePath
-      });
-    })
-  },
+            // #ifdef MP-WEIXIN
+            // uni.$tm.vx.commit('setWxShare', res.shareConfig);
+            // #endif
+
+            // 获取mockjson
+            if (res.basicConfig.auditModeEnabled) {
+                await uni.$tm.vx.actions('config/fetchMockJson')
+            }
+
+            // 进入检查
+            this.fnCheckShowStarted();
+        }).catch((err) => {
+            uni.switchTab({
+                url: homePagePath
+            });
+        })
+    },
     methods: {
         fnCheckShowStarted() {
             if (!this.configs.appConfig.startConfig.enabled) {
@@ -66,13 +73,13 @@ export default {
             }
         },
         async getPostIdByQRCode(key) {
-          const response = await this.$httpApi.v2.getQRCodeInfo(key);
-          if (response) {
-            if(response && response.postId) {
-              return response.postId;
+            const response = await this.$httpApi.v2.getQRCodeInfo(key);
+            if (response) {
+                if (response && response.postId) {
+                    return response.postId;
+                }
             }
-          }
-          return null;
+            return null;
         }
     }
 };
